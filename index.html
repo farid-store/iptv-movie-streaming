@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>Aplikasi Web Pemutar IPTV</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
@@ -93,8 +94,15 @@
         }
         #channel-title { 
             color: #cccccc; 
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             font-weight: normal;
+        }
+        #player-status {
+            color: #ffcc00;
+            font-size: 14px;
+            margin-top: 15px;
+            text-align: center;
+            min-height: 20px;
         }
         .status-text {
             color: #888;
@@ -119,20 +127,20 @@
     <div id="player-container">
         <h2 id="channel-title">Silakan pilih saluran televisi dari daftar di sebelah kiri</h2>
         <video id="video" controls autoplay></video>
+        <div id="player-status"></div>
     </div>
 
     <script>
-        // Daftar tautan M3U
         const playlistUrls = [
             'https://mgi24.github.io/tvdigital/idwork.m3u',
             'https://iptv-org.github.io/iptv/index.m3u'
         ];
         
         const video = document.getElementById('video');
+        const statusElement = document.getElementById('player-status');
         let hlsPlayer;
         let allChannels = [];
 
-        // Fungsi untuk mengambil dan menggabungkan semua daftar putar
         async function loadPlaylists() {
             for (const url of playlistUrls) {
                 try {
@@ -143,12 +151,9 @@
                     console.error('Terjadi kesalahan saat mengambil data dari tautan:', url, error);
                 }
             }
-            
-            // Hapus duplikat saluran jika ada, dan tampilkan 100 saluran pertama
             renderPlaylist(allChannels.slice(0, 100));
         }
 
-        // Fungsi untuk membaca format fail M3U
         function parseM3U(data) {
             const lines = data.split('\n');
             let currentName = '';
@@ -167,7 +172,6 @@
             });
         }
 
-        // Fungsi untuk menampilkan tombol saluran pada antarmuka
         function renderPlaylist(channels) {
             const playlistDiv = document.getElementById('playlist');
             playlistDiv.innerHTML = ''; 
@@ -186,55 +190,87 @@
             });
         }
 
-        // Fungsi untuk menyaring saluran berdasarkan masukan pencarian
         function filterChannels() {
             const query = document.getElementById('search-box').value.toLowerCase();
             
             if (!query) {
-                // Jika kotak pencarian kosong, kembalikan ke 100 saluran pertama
                 renderPlaylist(allChannels.slice(0, 100));
                 return;
             }
 
-            // Menyaring saluran yang namanya mengandung kata kunci pencarian
             const filtered = allChannels.filter(channel => 
                 channel.name.toLowerCase().includes(query)
             );
             
-            // Membatasi hasil pencarian hingga 100 agar peramban tetap ringan
             renderPlaylist(filtered.slice(0, 100));
         }
 
-        // Fungsi utama untuk memutar video (streaming)
         function playStream(url, name, btn) {
-            document.getElementById('channel-title').innerText = 'Sedang Memutar: ' + name;
+            document.getElementById('channel-title').innerText = 'Menghubungkan ke: ' + name;
+            statusElement.innerText = 'Sedang memuat saluran televisi...';
+            statusElement.style.color = '#ffcc00';
 
-            // Memperbarui indikator visual pada tombol saluran yang aktif
             document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
 
-            // Logika pemutar video menggunakan HLS.js
             if (Hls.isSupported()) {
                 if (hlsPlayer) {
                     hlsPlayer.destroy(); 
                 }
-                hlsPlayer = new Hls();
+                
+                hlsPlayer = new Hls({
+                    debug: false,
+                    enableWorker: true
+                });
+                
                 hlsPlayer.loadSource(url);
                 hlsPlayer.attachMedia(video);
+                
+                // Menangani saat video berhasil diproses
                 hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
+                    statusElement.innerText = 'Pemutaran berhasil dimulai.';
+                    statusElement.style.color = '#00ff00';
+                    video.play().catch(function(error) {
+                        statusElement.innerText = 'Silakan klik tombol putar pada pemutar video.';
+                    });
                 });
-            } 
-            // Alternatif untuk peramban Safari yang mendukung HLS secara bawaan
-            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+
+                // Menangani kesalahan pemutaran
+                hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                statusElement.innerText = 'Kesalahan Jaringan atau CORS: Saluran ini tidak mengizinkan pemutaran dari situs web ini atau peladen sedang mati.';
+                                statusElement.style.color = '#ff3333';
+                                hlsPlayer.destroy();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                statusElement.innerText = 'Kesalahan Media: Sedang mencoba memulihkan pemutaran...';
+                                hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                statusElement.innerText = 'Terjadi kesalahan fatal yang tidak diketahui pada siaran ini.';
+                                statusElement.style.color = '#ff3333';
+                                hlsPlayer.destroy();
+                                break;
+                        }
+                    }
+                });
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = url;
                 video.addEventListener('loadedmetadata', function() {
+                    statusElement.innerText = 'Pemutaran berhasil dimulai.';
+                    statusElement.style.color = '#00ff00';
                     video.play();
+                });
+                video.addEventListener('error', function() {
+                    statusElement.innerText = 'Terjadi kesalahan. Saluran televisi tidak dapat diputar pada peramban ini.';
+                    statusElement.style.color = '#ff3333';
                 });
             }
         }
 
-        // Memulai proses pengambilan data ketika halaman dimuat
         loadPlaylists();
     </script>
 </body>
