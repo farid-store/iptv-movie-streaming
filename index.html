@@ -1,134 +1,77 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <title>Aplikasi Web Pemutar IPTV</title>
+    <title>Farid Store TV - Premium IPTV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        body { 
-            display: flex; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            height: 100vh; 
-            background: #121212; 
-            color: #ffffff; 
-        }
-        #sidebar { 
-            width: 320px; 
-            background: #1e1e1e; 
-            display: flex;
-            flex-direction: column;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.8);
-            z-index: 10;
-        }
-        #sidebar-header {
-            padding: 20px 15px 10px 15px;
-            border-bottom: 1px solid #333;
-        }
-        #sidebar-header h2 { 
-            font-size: 18px; 
-            margin: 0 0 15px 0; 
-            color: #f1f1f1;
-        }
-        #search-box {
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            color: #fff;
-            border-radius: 4px;
-            outline: none;
-        }
-        #search-box:focus {
-            border-color: #007bff;
-        }
-        #playlist { 
-            flex-grow: 1;
-            overflow-y: auto; 
-            padding: 15px; 
-        }
-        #player-container { 
-            flex-grow: 1; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            flex-direction: column; 
-            background: #0a0a0a; 
-            padding: 20px;
-        }
-        video { 
-            width: 100%; 
-            max-width: 1000px; 
-            aspect-ratio: 16/9; 
-            background: #000; 
-            border: 1px solid #333; 
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-        .channel-btn { 
-            display: block; 
-            width: 100%; 
-            padding: 12px; 
-            margin-bottom: 8px; 
-            background: #2a2a2a; 
-            color: #e0e0e0; 
-            border: 1px solid transparent; 
-            border-radius: 6px;
-            cursor: pointer; 
-            text-align: left; 
-            transition: all 0.2s ease;
-            font-size: 14px;
-        }
-        .channel-btn:hover { 
-            background: #3a3a3a; 
-            border-color: #555;
-        }
-        .active { 
-            background: #0056b3; 
-            color: #ffffff;
-            font-weight: bold; 
-            border-color: #007bff;
-        }
-        #channel-title { 
-            color: #cccccc; 
-            margin-bottom: 10px;
-            font-weight: normal;
-        }
-        #player-status {
-            color: #ffcc00;
-            font-size: 14px;
-            margin-top: 15px;
-            text-align: center;
-            min-height: 20px;
-        }
-        .status-text {
-            color: #888;
-            font-size: 14px;
-            text-align: center;
-            margin-top: 20px;
+        /* Custom Scrollbar yang elegan */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+        
+        .channel-active {
+            background-color: #4f46e5 !important;
+            border-left: 4px solid #818cf8 !important;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-950 text-gray-200 h-screen flex flex-col md:flex-row font-sans overflow-hidden">
 
-    <div id="sidebar">
-        <div id="sidebar-header">
-            <h2>Daftar Saluran Televisi</h2>
-            <input type="text" id="search-box" placeholder="Cari nama saluran televisi..." onkeyup="filterChannels()">
+    <aside class="w-full md:w-80 bg-gray-900 border-r border-gray-800 flex flex-col h-2/5 md:h-full z-20 shadow-2xl shrink-0">
+        <div class="p-5 border-b border-gray-800 bg-gray-900/95 backdrop-blur z-10 sticky top-0">
+            <div class="flex items-center gap-3 mb-4">
+                <i class="ph-fill ph-television-simple text-3xl text-indigo-500"></i>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-wide">Live<span class="text-indigo-500">TV</span></h1>
+                    <p class="text-xs text-gray-400">Farid Store Streaming</p>
+                </div>
+            </div>
+            
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                <input type="text" id="search-box" placeholder="Cari channel..." 
+                    class="w-full bg-gray-800 text-sm text-white rounded-lg pl-10 pr-4 py-2.5 outline-none border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder-gray-500"
+                    onkeyup="filterChannels()">
+            </div>
+            <div id="channel-stats" class="text-xs text-gray-500 mt-3 flex justify-between">
+                <span>Memuat data...</span>
+            </div>
         </div>
-        <div id="playlist">
-            <div class="status-text">Memuat data saluran televisi...</div>
-        </div>
-    </div>
 
-    <div id="player-container">
-        <h2 id="channel-title">Silakan pilih saluran televisi dari daftar di sebelah kiri</h2>
-        <video id="video" controls autoplay></video>
-        <div id="player-status"></div>
-    </div>
+        <div id="playlist" class="flex-1 overflow-y-auto p-3 space-y-1.5 scroll-smooth">
+            <div class="flex flex-col items-center justify-center h-full text-gray-500 space-y-2">
+                <i class="ph ph-spinner-gap animate-spin text-3xl text-indigo-500"></i>
+                <p class="text-sm">Mengambil playlist...</p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-3/5 md:h-full bg-black relative">
+        
+        <header class="absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-10 flex justify-between items-start pointer-events-none">
+            <div>
+                <h2 id="channel-title" class="text-2xl font-bold text-white drop-shadow-md">Belum ada channel dipilih</h2>
+                <div id="player-status" class="flex items-center gap-2 mt-2 text-sm text-gray-300 bg-black/40 w-max px-3 py-1 rounded-full backdrop-blur">
+                    <span class="w-2 h-2 rounded-full bg-gray-500" id="status-dot"></span>
+                    <span id="status-text">Pilih channel di sidebar</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 flex items-center justify-center relative w-full h-full">
+            <video id="video" class="w-full h-full object-contain bg-black" controls autoplay playsinline></video>
+            
+            <div id="video-loading" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center hidden z-20">
+                <i class="ph ph-circle-notch animate-spin text-5xl text-indigo-500 mb-4"></i>
+                <p class="text-indigo-400 font-medium animate-pulse">Menghubungkan ke server...</p>
+            </div>
+        </div>
+    </main>
 
     <script>
         const playlistUrls = [
@@ -137,9 +80,25 @@
         ];
         
         const video = document.getElementById('video');
-        const statusElement = document.getElementById('player-status');
-        let hlsPlayer;
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
+        const loadingOverlay = document.getElementById('video-loading');
+        const playlistDiv = document.getElementById('playlist');
+        const channelStats = document.getElementById('channel-stats');
+        
+        let hlsPlayer = null;
         let allChannels = [];
+        const RENDER_LIMIT = 150; // Render maksimal 150 agar browser tidak lag
+
+        // Update UI Status
+        function updateStatus(message, state) {
+            statusText.innerText = message;
+            statusDot.className = 'w-2 h-2 rounded-full';
+            if(state === 'success') statusDot.classList.add('bg-green-500', 'animate-pulse');
+            else if(state === 'error') statusDot.classList.add('bg-red-500');
+            else if(state === 'loading') statusDot.classList.add('bg-yellow-500');
+            else statusDot.classList.add('bg-gray-500');
+        }
 
         async function loadPlaylists() {
             for (const url of playlistUrls) {
@@ -148,10 +107,11 @@
                     const data = await response.text();
                     parseM3U(data);
                 } catch (error) {
-                    console.error('Terjadi kesalahan saat mengambil data dari tautan:', url, error);
+                    console.error('Gagal mengambil data dari:', url, error);
                 }
             }
-            renderPlaylist(allChannels.slice(0, 100));
+            channelStats.innerHTML = `<span>Total: <b>${allChannels.length}</b> channel</span><span>Menampilkan ${Math.min(RENDER_LIMIT, allChannels.length)}</span>`;
+            renderPlaylist(allChannels.slice(0, RENDER_LIMIT));
         }
 
         function parseM3U(data) {
@@ -162,7 +122,8 @@
                 line = line.trim();
                 if (line.startsWith('#EXTINF:')) {
                     const parts = line.split(',');
-                    currentName = parts[parts.length - 1].trim();
+                    // Membersihkan nama dari karakter aneh
+                    currentName = parts.length > 1 ? parts[parts.length - 1].trim() : 'Unknown Channel';
                 } else if (line && !line.startsWith('#')) {
                     if (currentName) {
                         allChannels.push({ name: currentName, url: line });
@@ -173,18 +134,24 @@
         }
 
         function renderPlaylist(channels) {
-            const playlistDiv = document.getElementById('playlist');
             playlistDiv.innerHTML = ''; 
 
             if (channels.length === 0) {
-                playlistDiv.innerHTML = '<div class="status-text">Saluran televisi tidak ditemukan.</div>';
+                playlistDiv.innerHTML = `
+                    <div class="text-center p-6 text-gray-500">
+                        <i class="ph ph-mask-sad text-4xl mb-2"></i>
+                        <p>Channel tidak ditemukan.</p>
+                    </div>`;
                 return;
             }
 
-            channels.forEach(channel => {
+            channels.forEach((channel, index) => {
                 const btn = document.createElement('button');
-                btn.className = 'channel-btn';
-                btn.innerText = channel.name;
+                btn.className = 'w-full text-left px-4 py-3 bg-gray-800/50 hover:bg-gray-800 border-l-4 border-transparent rounded-r-lg mb-1.5 transition-all duration-200 flex items-center justify-between group';
+                btn.innerHTML = `
+                    <span class="text-sm font-medium text-gray-300 group-hover:text-white truncate pr-2">${channel.name}</span>
+                    <i class="ph-fill ph-play-circle text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                `;
                 btn.onclick = () => playStream(channel.url, channel.name, btn);
                 playlistDiv.appendChild(btn);
             });
@@ -192,26 +159,23 @@
 
         function filterChannels() {
             const query = document.getElementById('search-box').value.toLowerCase();
-            
             if (!query) {
-                renderPlaylist(allChannels.slice(0, 100));
+                renderPlaylist(allChannels.slice(0, RENDER_LIMIT));
                 return;
             }
-
-            const filtered = allChannels.filter(channel => 
-                channel.name.toLowerCase().includes(query)
-            );
-            
-            renderPlaylist(filtered.slice(0, 100));
+            // Filter semua channel, lalu batasi render agar tidak lag
+            const filtered = allChannels.filter(channel => channel.name.toLowerCase().includes(query));
+            renderPlaylist(filtered.slice(0, RENDER_LIMIT));
         }
 
         function playStream(url, name, btn) {
-            document.getElementById('channel-title').innerText = 'Menghubungkan ke: ' + name;
-            statusElement.innerText = 'Sedang memuat saluran televisi...';
-            statusElement.style.color = '#ffcc00';
+            document.getElementById('channel-title').innerText = name;
+            updateStatus('Menghubungkan...', 'loading');
+            loadingOverlay.classList.remove('hidden');
 
-            document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
+            // Reset tombol aktif
+            document.querySelectorAll('#playlist button').forEach(b => b.classList.remove('channel-active', 'bg-indigo-600'));
+            if (btn) btn.classList.add('channel-active');
 
             if (Hls.isSupported()) {
                 if (hlsPlayer) {
@@ -219,38 +183,36 @@
                 }
                 
                 hlsPlayer = new Hls({
-                    debug: false,
-                    enableWorker: true
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 600,
                 });
                 
                 hlsPlayer.loadSource(url);
                 hlsPlayer.attachMedia(video);
                 
-                // Menangani saat video berhasil diproses
                 hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
-                    statusElement.innerText = 'Pemutaran berhasil dimulai.';
-                    statusElement.style.color = '#00ff00';
-                    video.play().catch(function(error) {
-                        statusElement.innerText = 'Silakan klik tombol putar pada pemutar video.';
+                    loadingOverlay.classList.add('hidden');
+                    updateStatus('Memutar', 'success');
+                    video.play().catch(e => {
+                        updateStatus('Klik play untuk memulai', 'loading');
+                        console.log("Autoplay dicegah browser", e);
                     });
                 });
 
-                // Menangani kesalahan pemutaran
                 hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
                     if (data.fatal) {
+                        loadingOverlay.classList.add('hidden');
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
-                                statusElement.innerText = 'Kesalahan Jaringan atau CORS: Saluran ini tidak mengizinkan pemutaran dari situs web ini atau peladen sedang mati.';
-                                statusElement.style.color = '#ff3333';
+                                updateStatus('Gagal: Diblokir CORS atau Server Mati', 'error');
                                 hlsPlayer.destroy();
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
-                                statusElement.innerText = 'Kesalahan Media: Sedang mencoba memulihkan pemutaran...';
+                                updateStatus('Memulihkan error media...', 'loading');
                                 hlsPlayer.recoverMediaError();
                                 break;
                             default:
-                                statusElement.innerText = 'Terjadi kesalahan fatal yang tidak diketahui pada siaran ini.';
-                                statusElement.style.color = '#ff3333';
+                                updateStatus('Error fatal tidak diketahui', 'error');
                                 hlsPlayer.destroy();
                                 break;
                         }
@@ -258,19 +220,21 @@
                 });
 
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Untuk pengguna Safari/iOS
                 video.src = url;
                 video.addEventListener('loadedmetadata', function() {
-                    statusElement.innerText = 'Pemutaran berhasil dimulai.';
-                    statusElement.style.color = '#00ff00';
+                    loadingOverlay.classList.add('hidden');
+                    updateStatus('Memutar', 'success');
                     video.play();
                 });
                 video.addEventListener('error', function() {
-                    statusElement.innerText = 'Terjadi kesalahan. Saluran televisi tidak dapat diputar pada peramban ini.';
-                    statusElement.style.color = '#ff3333';
+                    loadingOverlay.classList.add('hidden');
+                    updateStatus('Format tidak didukung', 'error');
                 });
             }
         }
 
+        // Jalankan saat web dimuat
         loadPlaylists();
     </script>
 </body>
